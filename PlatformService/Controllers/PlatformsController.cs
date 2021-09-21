@@ -2,11 +2,14 @@ namespace PlatformService.Controllers
 {
     using System;
     using System.Collections.Generic;
+    using System.Threading.Tasks;
     using AutoMapper;
     using Microsoft.AspNetCore.Mvc;
+    using Microsoft.Extensions.Logging;
     using PlatformService.Data;
     using PlatformService.Dtos;
     using PlatformService.Models;
+    using PlatformService.SyncDataServices.Http;
 
     [Route("api/[controller]")]
     [ApiController]
@@ -14,17 +17,21 @@ namespace PlatformService.Controllers
     {
         private readonly IPlatformRepository _platformRepository;
         private readonly IMapper _mapper;
+        private readonly ICommandDataClient _commandDataClient;
+        private readonly ILogger _logger;
 
-        public PlatformsController(IPlatformRepository platformRepository, IMapper mapper)
+        public PlatformsController(IPlatformRepository platformRepository, IMapper mapper, ICommandDataClient commandDataClient, ILogger<PlatformsController> logger)
         {
             _platformRepository = platformRepository;
             _mapper = mapper;
+            _commandDataClient = commandDataClient;
+            _logger = logger;
         }
 
         [HttpGet]
         public ActionResult<IEnumerable<PlatformReadDto>> GetPlatforms()
         {
-            Console.WriteLine("--> Getting Platforms.....");
+            _logger.LogInformation("--> Getting Platforms.....");
 
             var platforms = _platformRepository.GetAllPlatforms();
 
@@ -34,7 +41,7 @@ namespace PlatformService.Controllers
         [HttpGet("{id}", Name = "GetPlatformById")]
         public ActionResult<PlatformReadDto> GetPlatformById(int id)
         {
-            Console.WriteLine($"--> Getting Platform {id}.....");
+            _logger.LogInformation($"--> Getting Platform {id}.....");
             var platform = _platformRepository.GetPlatformById(id);
             if (platform == null)
             {
@@ -44,14 +51,24 @@ namespace PlatformService.Controllers
         }
 
         [HttpPost]
-        public ActionResult<PlatformReadDto> CreatePlatform(PlatformCreateDto platformCreateDto)
+        public async Task<ActionResult<PlatformReadDto>> CreatePlatform(PlatformCreateDto platformCreateDto)
         {
-            Console.WriteLine("--> Creating Platform.....");
+            _logger.LogInformation("--> Creating Platform.....");
+            
             var platform = _mapper.Map<Platform>(platformCreateDto);
             _platformRepository.CreatePlatform(platform);
             _platformRepository.SaveChanges();
 
             var platformReadDto = _mapper.Map<PlatformReadDto>(platform);
+
+            try
+            {
+                await _commandDataClient.SendPlatformToCommand(platformReadDto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "--> Could not send sync");
+            }
 
             return CreatedAtRoute(nameof(GetPlatformById), new { Id = platformReadDto.Id }, platformReadDto);
         }
