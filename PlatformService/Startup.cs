@@ -1,18 +1,12 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.HttpsPolicy;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.OpenApi.Models;
+using PlatformService.Config;
 using PlatformService.Data;
 using PlatformService.SyncDataServices.Http;
 
@@ -32,7 +26,15 @@ namespace PlatformService
         {
             ConfigureOptions(services);
 
-            services.AddDbContext<AppDbContext>(opt => opt.UseInMemoryDatabase("InMem"));
+            var cfg = Configuration.GetSection("Storage").Get<StorageConfig>();
+
+            if(cfg.UseInMemory){
+                Console.WriteLine("Use in memory database");
+                services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("InMem"));
+            } else{
+                Console.WriteLine("Use Postgresql database");
+                services.AddDbContext<AppDbContext>(options => options.UseNpgsql(cfg.ConnectionString));
+            }
 
             services.AddScoped<IPlatformRepository, PlatformRepository>();
 
@@ -49,6 +51,7 @@ namespace PlatformService
         public void ConfigureOptions(IServiceCollection services)
         {
             services.Configure<CommandServiceConfig>(Configuration.GetSection("CommandService"));
+            services.Configure<StorageConfig>(Configuration.GetSection("Storage"));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -72,7 +75,7 @@ namespace PlatformService
                 endpoints.MapControllers();
             });
 
-            PrepDb.PrepPopulation(app);
+            PrepDb.PrepPopulation(app, !Configuration.GetSection("Storage").Get<StorageConfig>().UseInMemory);
         }
     }
 }

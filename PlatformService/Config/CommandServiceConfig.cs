@@ -1,4 +1,4 @@
-namespace PlatformService.SyncDataServices.Http
+namespace PlatformService.Config
 {
     public class CommandServiceConfig
     {
