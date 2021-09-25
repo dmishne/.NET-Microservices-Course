@@ -34,7 +34,7 @@ namespace CommandsService.Controllers
             }
 
             var commands = _commandRepository.GetCommandsForPlatform(platformId).ToList();
-            _logger.LogInformation($"{commands.Count}");
+
             return Ok(_mapper.Map<IEnumerable<CommandReadDto>>(commands));
         }
 

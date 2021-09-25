@@ -6,6 +6,7 @@ namespace PlatformService.Controllers
     using AutoMapper;
     using Microsoft.AspNetCore.Mvc;
     using Microsoft.Extensions.Logging;
+    using PlatformService.AsyncDataServices;
     using PlatformService.Data;
     using PlatformService.Dtos;
     using PlatformService.Models;
@@ -18,13 +19,15 @@ namespace PlatformService.Controllers
         private readonly IPlatformRepository _platformRepository;
         private readonly IMapper _mapper;
         private readonly ICommandDataClient _commandDataClient;
+        private readonly IMessageBusClient _messageBusClient;
         private readonly ILogger _logger;
 
-        public PlatformsController(IPlatformRepository platformRepository, IMapper mapper, ICommandDataClient commandDataClient, ILogger<PlatformsController> logger)
+        public PlatformsController(IPlatformRepository platformRepository, IMapper mapper, ICommandDataClient commandDataClient, IMessageBusClient messageBusClient, ILogger<PlatformsController> logger)
         {
             _platformRepository = platformRepository;
             _mapper = mapper;
             _commandDataClient = commandDataClient;
+            _messageBusClient = messageBusClient;
             _logger = logger;
         }
 
@@ -54,7 +57,7 @@ namespace PlatformService.Controllers
         public async Task<ActionResult<PlatformReadDto>> CreatePlatform(PlatformCreateDto platformCreateDto)
         {
             _logger.LogInformation("--> Creating Platform.....");
-            
+
             var platform = _mapper.Map<Platform>(platformCreateDto);
             _platformRepository.CreatePlatform(platform);
             _platformRepository.SaveChanges();
@@ -68,6 +71,17 @@ namespace PlatformService.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "--> Could not send sync");
+            }
+
+            try
+            {
+                var platformPublishDto = _mapper.Map<PlatformPublishedDto>(platformReadDto);
+                platformPublishDto.Event = "Platform_Published";
+                _messageBusClient.PublishNewPlatform(platformPublishDto);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "--> Count not send async");
             }
 
             return CreatedAtRoute(nameof(GetPlatformById), new { Id = platformReadDto.Id }, platformReadDto);

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
+using PlatformService.AsyncDataServices;
 using PlatformService.Config;
 using PlatformService.Data;
 using PlatformService.SyncDataServices.Http;
@@ -40,6 +41,7 @@ namespace PlatformService
             }
 
             services.AddScoped<IPlatformRepository, PlatformRepository>();
+            services.AddSingleton<IMessageBusClient, MessageBusClient>();
 
             services.AddHttpClient<ICommandDataClient, HttpCommandDataClient>();
 
@@ -55,6 +57,7 @@ namespace PlatformService
         {
             services.Configure<CommandServiceConfig>(Configuration.GetSection("CommandService"));
             services.Configure<StorageConfig>(Configuration.GetSection("Storage"));
+            services.Configure<MessageQueueConfig>(Configuration.GetSection("MessageQueue"));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

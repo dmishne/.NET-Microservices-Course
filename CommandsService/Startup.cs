@@ -2,7 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using CommandsService.Config;
 using CommandsService.Data;
+using CommandsService.EventProcessing;
+using CommandsServices.AsyncDataServices;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -27,16 +30,26 @@ namespace CommandsService
 
         public void ConfigureServices(IServiceCollection services)
         {
+            ConfigureOptions(services);
+
             services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("InMem"));
             services.AddControllers();
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
             services.AddScoped<ICommandRepository, CommandRepository>();
+            services.AddSingleton<IEventProcessor, EventProcessor>();
+
+            services.AddHostedService<MessageBusSubscriber>();
 
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "CommandsService", Version = "v1" });
             });
+        }
+
+        private void ConfigureOptions(IServiceCollection services)
+        {
+            services.Configure<MessageQueueConfig>(Configuration.GetSection("MessageQueue"));
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
