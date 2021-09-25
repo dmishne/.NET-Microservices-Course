@@ -28,10 +28,13 @@ namespace PlatformService
 
             var cfg = Configuration.GetSection("Storage").Get<StorageConfig>();
 
-            if(cfg.UseInMemory){
+            if (cfg.UseInMemory)
+            {
                 Console.WriteLine("Use in memory database");
                 services.AddDbContext<AppDbContext>(options => options.UseInMemoryDatabase("InMem"));
-            } else{
+            }
+            else
+            {
                 Console.WriteLine("Use Postgresql database");
                 services.AddDbContext<AppDbContext>(options => options.UseNpgsql(cfg.ConnectionString));
             }
