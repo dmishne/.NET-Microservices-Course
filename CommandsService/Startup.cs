@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using CommandsService.Config;
 using CommandsService.Data;
 using CommandsService.EventProcessing;
+using CommandsService.SyncDataServices.Grpc;
 using CommandsServices.AsyncDataServices;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -38,6 +39,7 @@ namespace CommandsService
 
             services.AddScoped<ICommandRepository, CommandRepository>();
             services.AddSingleton<IEventProcessor, EventProcessor>();
+            services.AddSingleton<IPlatformDataClient, PlatformDataClient>();
 
             services.AddHostedService<MessageBusSubscriber>();
 
@@ -50,6 +52,7 @@ namespace CommandsService
         private void ConfigureOptions(IServiceCollection services)
         {
             services.Configure<MessageQueueConfig>(Configuration.GetSection("MessageQueue"));
+            services.Configure<GrpcPlatformConfig>(Configuration.GetSection("GrpcPlatform"));
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -71,6 +74,8 @@ namespace CommandsService
             {
                 endpoints.MapControllers();
             });
+
+            PrepDb.PrepPopulation(app);
         }
     }
 }
